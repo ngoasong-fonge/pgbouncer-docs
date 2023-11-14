@@ -1,0 +1,17 @@
+problems:
+
+; -bash-4.1$ tail -f pgbouncer.log 2020-11-11 16:26:58.569 EST [17100] LOG stats: 0 xacts/s, 0 queries/s, in 0 B/s, out 0 B/s, xact 0 us, query 0 us, wait 0 us 2020-11-11 16:27:58.569 EST [17100] LOG stats: 0 xacts/s, 0 queries/s, in 0 B/s, out 0 B/s, xact 0 us, query 0 us, wait 0 us 2020-11-11 16:28:25.291 EST [17100] LOG S-0x223dbb8: analytics_production/authuser@[::1]:5432 new connection to server (from [::1]:44490) 2020-11-11 16:28:25.293 EST [17100] WARNING server login failed: FATAL no pg_hba.conf entry for host "::1", user "authuser", database "analytics_production", SSL off 2020-11-11 16:28:25.293 EST [17100] LOG S-0x223dbb8: analytics_production/authuser@[::1]:5432 closing because: login failed (age=0s) 2020-11-11 16:28:38.740 EST [17100] LOG C-0x222ecb0: analytics_production/(nouser)@10.26.34.48:56665 closing because: pgbouncer cannot connect to server (age=0s) 2020-11-11 16:28:38.740 EST [17100] WARNING C-0x222ecb0: analytics_production/(nouser)@10.26.34.48:56665 pooler error: pgbouncer cannot connect to server 2020-11-11 16:28:40.464 EST [17100] LOG S-0x223dbb8: analytics_production/authuser@[::1]:5432 new connection to server (from [::1]:44494) 2020-11-11 16:28:40.466 EST [17100] WARNING server login failed: FATAL no pg_hba.conf entry for host "::1", user "authuser", database "analytics_production", SSL off 2020-11-11 16:28:40.466 EST [17100] LOG S-0x223dbb8: analytics_production/authuser@[::1]:5432 closing because: login failed (age=0s) 2020-11-11 16:28:55.464 EST [17100] LOG S-0x223dbb8: analytics_production/authuser@127.0.0.1:5432 new connection to server (from 127.0.0.1:56710) 2020-11-11 16:28:55.472 EST [17100] LOG C-0x222eee8: analytics_production/kapowmc@10.26.34.48:56663 login attempt: db=analytics_production user=kapowmc tls=no 2020-11-11 16:28:55.472 EST [17100] LOG C-0x222eee8: analytics_production/kapowmc@10.26.34.48:56663 closing because: pgbouncer cannot connect to server (age=30s) 2020-11-11 16:28:55.472 EST [17100] LOG S-0x223dbb8: analytics_production/authuser@127.0.0.1:5432 closing because: unclean server (age=0s) 2020-11-11 16:28:55.472 EST [17100] WARNING C-0x222eee8: analytics_production/kapowmc@10.26.34.48:56663 pooler error: pgbouncer cannot connect to server 2020-11-11 16:28:55.473 EST [17100] LOG S-0x223d980: analytics_production/pentaho_analytics@[::1]:5432 new connection to server (from [::1]:44498) 2020-11-11 16:28:55.475 EST [17100] WARNING server login failed: FATAL no pg_hba.conf entry for host "::1", user "pentaho_analytics", database "analytics_production", SSL off 2020-11-11 16:28:55.475 EST [17100] LOG S-0x223d980: analytics_production/pentaho_analytics@[::1]:5432 closing because: login failed (age=0s)
+
+Solution from Euler:
+
+Hi,
+It seems the connection string for user authuser is not working. Let's test it based on the connection string you provided in the section databases.
+psql "host=localhost port=5432 dbname=analytics_production user=authuser"
+it is basically the same connection string but the pgbouncer specific parameters were removed and the user is replaced with auth_user. It should fail because you don't have a rule in your pg_hba.conf that matches localhost, port 5432, user authuser and database analytics_production. It should be something like
+
+host    analytics_production    authuser         ::1/128    md5
+host    analytics_production    authuser    127.0.0.1/32    md5
+
+Since localhost can match IPv4 or IPv6, use both rules.
+Let me know how it goes.
+Regards, Euler

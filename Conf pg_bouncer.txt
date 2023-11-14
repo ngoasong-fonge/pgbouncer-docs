@@ -1,0 +1,53 @@
+- yum install pgbouncer
+- cd to /etc  change pgbouncer ownership to postgres ( chown -R postgres:postgres pgbouncer)
+- Verify file permision inside pgbouncer -- cd /etc/pgbouncer/ and change all the files permision ( chmod 775 * )
+- create userlist.txt in /etc/pgbouncer with postgres ownership. In it put the various administrative users there with auth_user
+- set pgbouncer auth_query and auth_user in pgbouncer.ini 
+* Create a Postgres user to use as auth_user (superuser)
+* Create the user/password lookup function in Postgres ( CREATE OR REPLACE FUNCTION user_search(uname TEXT) RETURNS TABLE (usename name, passwd text) as
+$$
+  SELECT usename, passwd FROM pg_shadow WHERE usename=$1;
+$$
+LANGUAGE sql SECURITY DEFINER; )
+
+* configure auth_query in the [pgbouncer] with : auth_query = SELECT usename, passwd FROM user_search($1)
+
+- open the pgbouncer.ini and make parameter changes;
+- start pgbouncer ( pgbouncer /etc/pgbouncer/pgbouncer.ini -d ) 
+- get PGBouncer to auto start on reboot 
+* run:- sudo chkconfig pgbouncer on
+* also run:- sudo chkconfig --list | grep pgbouncer 
+
+
+pgbouncer /etc/pgbouncer/pgbouncer.ini -v
+psql -h localhost -p 6432 -U ngoasong.fonge -d pgbouncer
+
+su - postgres , then to reload run
+service pgbouncer reload
+
+
+
+-bash-4.1$ tail /var/log/pgbouncer/pgbouncer.log
+2020-11-22 08:41:56.223 EST [18981] FATAL unix socket is in use, cannot continue
+2020-11-22 08:41:56.223 EST [6149] DEBUG C-0x26882f8: (nodb)/(nouser)@unix(18981):6432 P: got connection: unix->unix
+2020-11-22 08:41:56.223 EST [6149] LOG C-0x26882f8: (nodb)/(nouser)@unix(18981):6432 closing because: client unexpected eof (age=0s)
+2020-11-22 08:42:02.193 EST [6149] LOG C-0x26889a0: analytics_production/(nouser)@10.18.3.42:47476 closing because: query_wait_timeout (age=120s)
+2020-11-22 08:42:02.193 EST [6149] WARNING C-0x26889a0: analytics_production/(nouser)@10.18.3.42:47476 pooler error: query_wait_timeout
+2020-11-22 08:42:04.437 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 query time: 138 us
+2020-11-22 08:42:04.437 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 transaction time: 138 us
+2020-11-22 08:42:07.575 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 query time: 133 us
+2020-11-22 08:42:07.575 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 transaction time: 133 us
+2020-11-22 08:42:26.310 EST [6149] LOG stats: 0 xacts/s, 0 queries/s, in 0 B/s, out 4 B/s, xact 144 us, query 144 us, wait 0 us
+-bash-4.1$ tail /var/log/pgbouncer/pgbouncer.log
+2020-11-22 08:52:04.917 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 transaction time: 5584 us
+2020-11-22 08:52:08.061 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 query time: 110 us
+2020-11-22 08:52:08.061 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 transaction time: 110 us
+2020-11-22 08:52:26.310 EST [6149] LOG stats: 0 xacts/s, 0 queries/s, in 0 B/s, out 4 B/s, xact 1500 us, query 1500 us, wait 0 us
+2020-11-22 08:52:34.940 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 query time: 144 us
+2020-11-22 08:52:34.940 EST [6149] DEBUG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 transaction time: 144 us
+2020-11-22 08:52:36.944 EST [6149] LOG S-0x2691ec8: analytics_production/pentaho_analytics@unix:5432 closing because: server conn crashed? (age=23210s)
+2020-11-22 08:52:36.944 EST [6149] LOG C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 closing because: server conn crashed? (age=23210s)
+2020-11-22 08:52:36.944 EST [6149] WARNING C-0x2687138: analytics_production/pentaho_analytics@10.18.3.39:48584 pooler error: server conn crashed?
+2020-11-22 08:52:37.193 EST [6149] LOG server connections dropped, exiting
+
+host=analyticspgdbstage8.ccmg6rjihvgh.us-east-1.rds.amazonaws.com

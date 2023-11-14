@@ -1,0 +1,33 @@
+Nagoasong,
+
+I'm supposing you installed pgbouncer in the CentOS 6 box. In this case, `/etc/init.d/pgbouncer` has:
+
+```
+        # Make sure startup-time log file is valid
+        if [ ! -e "$BOUNCERLOG" -a ! -h "$BOUNCERLOG" ]
+        then
+                touch "$BOUNCERLOG" || exit 1
+                chown pgbouncer:pgbouncer "$BOUNCERLOG"
+                chmod go-rwx "$BOUNCERLOG"
+                [ -x /usr/bin/chcon ] && /usr/bin/chcon -u system_u -r object_r -t postgresql_log_t "$BOUNCERLOG" 2>/dev/null
+        fi
+
+        mkdir -p $(dirname $pidfile)
+        chown pgbouncer:pgbouncer $(dirname $pidfile)
+
+        cd /
+        daemon --user=pgbouncer --pidfile=$pidfile $exec -d -q $BOUNCERCONF
+        retval=$?
+```
+
+This snippet is from the function `start()` which means that every start triggers an ownership change. In order to change the pgbouncer daemon user from pgbouncer to postgres, you have to modify the pgbouncer service file (/etc/init.d/pgbouncer) replacing chown entries and also the daemon --user=pgbouncer to daemon --user=postgres. After that, you must change the log directory owner with the following command:
+
+chown -R postgres. /var/log/pgbouncer
+
+If you observe issues, please share the errors from the pgbouncer.log.
+
+Let me know if it works for you.
+
+PS> did you solve the authentication issues?
+
+Regards,

@@ -1,0 +1,51 @@
+Hi Ngoasong,
+Your setup seems correct. I just want to clarify that non-superuser doesn't have permission to read pg_shadow; it means that if authuser is not superuser, you have some permission denied errors in the Postgres log.
+2020-10-13 18:24:18.344 -03 [14422] ERROR:  permission denied for function user_credentials
+2020-10-13 18:24:18.344 -03 [14422] STATEMENT:  SELECT rolename, rolepassword FROM user_credentials($1)
+We recommend that you use a function instead of that query. As a superuser executes the following SQL commands:
+CREATE OR REPLACE FUNCTION user_credentials(IN vusername text, OUT rolename text, OUT rolepassword text)
+RETURNS record AS $$
+BEGIN
+    SELECT rolname, rolpassword FROM pg_authid WHERE rolname = vusername INTO rolename, rolepassword;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+REVOKE ALL PRIVILEGES ON FUNCTION user_credentials FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION user_credentials TO authuser;
+It allows non-superuser (authuser) to query pg_authid because it is a security definer function.
+Adjust your auth_query accordingly:
+auth_query = SELECT rolename, rolepassword FROM user_credentials($1)
+You can always inspect your Postgres log files to look for messages related to authuser.
+Let me know if works for you.
+Regards, Euler
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

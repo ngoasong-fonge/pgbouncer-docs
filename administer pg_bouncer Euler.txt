@@ -1,0 +1,39 @@
+Hi Ngoasong,
+Glad to hear that. The pgbouncer administration is simple. You should basically have to learn some commands that you execute in the admin console (connect to pgbouncer virtual database). You should also add some SHOW commands to your monitoring system (such as SHOW POOLS). Since SHOW commands does not have WHERE clause or other SQL facilities, you can create a view over dblinkquery. Hence, you can use SQL capabilities with the rows returned by SHOW commands. Let's suppose your monitor role is monitoruser and that you add it to stats_users in your pgbouncer.ini. The following SQL commands will create a FDW using dblink extension:
+CREATE EXTENSION dblink;
+CREATE SERVER pgbouncer FOREIGN DATA WRAPPER dblink_fdw OPTIONS (host 'localhost', port '6432', dbname 'pgbouncer');
+CREATE USER MAPPING FOR PUBLIC SERVER pgbouncer OPTIONS (user 'monitoruser', password 'secret');
+GRANT USAGE ON FOREIGN SERVER pgbouncer TO monitoruser;
+
+CREATE SCHEMA pgbouncer;
+CREATE VIEW pgbouncer.pools AS
+SELECT * FROM dblink('pgbouncer', 'show pools') AS pgb
+    (database text, "user" text, cl_active int, cl_waiting int,
+    sv_active int, sv_idle int, sv_used int, sv_tested int,
+    sv_login int, maxwait int, maxwait_us int, pool_mode text);
+
+CREATE VIEW pgbouncer.clients AS
+SELECT * FROM dblink('pgbouncer', 'show clients') AS x
+    (type text, "user" text, database text, state text,
+    addr text, port int, local_addr text, local_port int,
+    connect_time timestamp with time zone, request_time timestamp with time zone,
+    wait int, wait_us int, close_needed int, ptr text,
+    link text, remote_pid int, tls text);
+
+CREATE VIEW pgbouncer.servers AS
+SELECT * FROM dblink('pgbouncer', 'show servers') AS x 
+    (type text, "user" text, database text, state text,
+    addr text, port int, local_addr text, local_port int,
+    connect_time timestamp with time zone, request_time timestamp with time zone,
+    wait int, wait_us int, close_needed int, ptr text,
+    link text, remote_pid int, tls text);
+
+GRANT USAGE ON SCHEMA pgbouncer TO monitoruser;
+GRANT SELECT ON pgbouncer.pools TO monitoruser;
+GRANT SELECT ON pgbouncer.clients TO monitoruser;
+GRANT SELECT ON pgbouncer.servers TO monitoruser;
+Change the CREATE SERVER credentials accordingly (host, port). Replace monitoruser and secret with the monitoring role credentials. In this example, we use a schema to encapsulate all your VIEWs. Feel free to add another SHOW commands. Here are some query examples:
+SELECT COUNT(*) FROM pgbouncer.clients;
+SELECT COUNT(*) FROM pgbouncer.servers;
+SELECT database, user FROM pgbouncer.pools WHERE cl_waiting > 0;
+Regards, Euler

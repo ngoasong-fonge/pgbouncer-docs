@@ -1,0 +1,53 @@
+# - Connection Settings -
+
+#listen_addresses = 'localhost'         # what IP address(es) to listen on;
+listen_addresses = '*'
+                                        # comma-separated list of addresses;
+                                        # defaults to 'localhost'; use '*' for all
+                                        # (change requires restart)
+#port = 5432                            # (change requires restart)
+max_connections = 450                   # (change requires restart)
+#superuser_reserved_connections = 3     # (change requires restart)
+#unix_socket_directories = '/var/run/postgresql, /tmp'  # comma-separated list of directories
+                                        # (change requires restart)
+#unix_socket_group = ''                 # (change requires restart)
+#unix_socket_permissions = 0777         # begin with 0 to use octal notation
+                                        # (change requires restart)
+#bonjour = off                          # advertise server via Bonjour
+                                        # (change requires restart)
+#bonjour_name = ''                      # defaults to the computer name
+                                        # (change requires restart)
+
+# - Security and Authentication -
+
+#authentication_timeout = 1min          # 1s-600s
+ssl = on                                # (change requires restart)
+ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL' # allowed SSL ciphers
+                                        # (change requires restart)
+#ssl_prefer_server_ciphers = on         # (change requires restart)
+#ssl_ecdh_curve = 'prime256v1'          # (change requires restart)
+ssl_cert_file = '/etc/ssl/postgresql/tangoe_signed_certnew.cer'         # (change requires restart)
+ssl_key_file = '/etc/ssl/postgresql/pgdb.key'           # (change requires restart)
+ssl_ca_file = '/etc/ssl/postgresql/tangoe_ca_root.cer'                  # (change requires restart)
+#ssl_crl_file = ''                      # (change requires restart)
+#password_encryption = on
+#db_user_namespace = off
+#row_security = on
+
+
+;auth_query = SELECT username, passwd FROM pg_shadow WHERE username=$1
+
+
+
+
+**without superuser**
+CREATE OR REPLACE FUNCTION user_credentials(IN vusername text, OUT rolename text, OUT rolepassword text)
+RETURNS record AS $$
+BEGIN
+    SELECT rolname, rolpassword FROM pg_authid WHERE rolname = vusername INTO rolename, rolepassword;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+REVOKE ALL PRIVILEGES ON FUNCTION user_credentials FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION user_credentials TO authuser;
+
+auth_query = SELECT rolename, rolepassword FROM user_credentials($1)
